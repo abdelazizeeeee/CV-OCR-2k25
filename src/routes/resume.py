@@ -5,6 +5,8 @@ import fitz
 import re
 import tempfile
 import shutil
+from datetime import datetime
+from src.models.resume_model import ResumeSchema, save_parsed_resume
 
 resume_router = APIRouter()
 
@@ -28,6 +30,12 @@ async def parse_resume_endpoint(file: UploadFile):
         if not result:
             raise HTTPException(status_code=500, detail="Failed to parse resume")
         
+        result["file_name"] = file.filename
+        result["uploaded_at"] = datetime.utcnow()
+        
+        validated_data = ResumeSchema(**result)
+        save_parsed_resume(validated_data.dict())
+        
         return result
         
     except Exception as e:
@@ -49,40 +57,25 @@ def parse_resume(file_path):
  
         text_of_resume = " ".join([page.get_text() for page in doc])
  
-        label_list = []
-        text_list = []
         dic = {}
  
         doc = nlp(text_of_resume)
         for ent in doc.ents:
-            label_list.append(ent.label_)
-            text_list.append(ent.text)
- 
-        for i in range(len(label_list)):
-            if label_list[i] in dic:
-                dic[label_list[i]].append(text_list[i])
-            else:
-                dic[label_list[i]] = [text_list[i]]
- 
-        value_name = dic.get('NAME', [None])[0]
-        value_linkedin = dic.get('LINKEDIN LINK', [None])[0]
-        value_linkedin = re.sub('\n', '', value_linkedin) if value_linkedin else None
-        value_skills = dic.get('SKILLS', None)
-        value_certificate = dic.get('CERTIFICATION', None)
-        value_workedAs = dic.get('WORKED AS', None)
-        value_experience = dic.get('YEARS OF EXPERIENCE', None)
+            dic.setdefault(ent.label_, []).append(ent.text)
+
+        
  
         parsed_data = {
-            "Name": value_name,
-            "LinkedIn_Link": value_linkedin,
-            "Skills": value_skills,
-            "Certification": value_certificate,
-            "Worked_As": value_workedAs,
-            "Years_Of_Experience": value_experience
+            "Name": dic.get('NAME', [None])[0],
+            "LinkedIn_Link": re.sub('\n', '', dic.get('LINKEDIN LINK', [None])[0]) if dic.get('LINKEDIN LINK') else None,
+            "Skills": dic.get('SKILLS', None),
+            "Certification": dic.get('CERTIFICATION', None),
+            "Worked_As": dic.get('WORKED AS', None),
+            "Years_Of_Experience": dic.get('YEARS OF EXPERIENCE', [None])
         }
  
         return parsed_data
  
     except Exception as e:
         print(f"Exception Occurred: {str(e)}")
-        return None 
+        return None
