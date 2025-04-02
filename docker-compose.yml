@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  resume-parser:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./src:/app/src
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - MONGO_URI=mongodb+srv://abdelaziznaija:UIJ4uHa7gsSSBn9y@cluster0.7pmpu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+      - MONGO_DB_NAME=resume_parser_db

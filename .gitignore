@@ -1,0 +1,9 @@
+.env
+ResumeModel
+*/__pycache__
+*/uploads/*
+*/resume-model/*
+uploads/*
+test
+.DS_Store
+*/.DS_Store
