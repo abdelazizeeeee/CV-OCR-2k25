@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from src.routes.resume import resume_router
+from src.routes.job import job_router
 
 def start_db():
     mongo_uri = os.getenv('MONGO_URI')  
@@ -32,6 +33,11 @@ app.include_router(
     tags=["Resume Parsing"]
 )
 
+app.include_router(
+    job_router,
+    prefix="/api/job",
+    tags=["Job Postings"]
+)
 
 if __name__ == "__main__":
     import uvicorn
