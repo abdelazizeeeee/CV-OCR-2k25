@@ -81,14 +81,27 @@ def extract_contact_info(text):
 
 def parse_resume(file_path):
     try:
+        print("Parsing Resume...")
         model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
                                  "ResumeModel/output/model-best")
-        nlp = spacy.load(model_path)
- 
+        print(f"Model Path: {model_path}")
+        
+        if not os.path.exists(model_path):
+            print(f"ERROR: Model path does not exist: {model_path}")
+            return None
+            
+        try:
+            nlp = spacy.load(model_path)
+            print('Loaded Model')
+        except Exception as model_error:
+            print(f"ERROR loading model: {str(model_error)}")
+            return None
+            
         doc = fitz.open(file_path)
+        print("Loading Resume...")
  
         text_of_resume = " ".join([page.get_text() for page in doc])
- 
+        print("Extracting Information...")
         dic = {}
  
         doc = nlp(text_of_resume)
@@ -96,14 +109,25 @@ def parse_resume(file_path):
             dic.setdefault(ent.label_, []).append(ent.text)
 
         contact_info = extract_contact_info(text_of_resume)
+        print("Parsing Completed...") 
         
+        experience = dic.get('YEARS OF EXPERIENCE', [])
+        if experience and not isinstance(experience, list):
+            experience = [experience]
+        
+        print(dic.get('NAME', [None])[0])
+        if experience:
+            print(experience[0])
+        else:
+            print("No years of experience found")
+            
         parsed_data = {
             "Name": dic.get('NAME', [None])[0],
             "LinkedIn_Link": re.sub('\n', '', dic.get('LINKEDIN LINK', [None])[0]) if dic.get('LINKEDIN LINK') else None,
             "Skills": dic.get('SKILLS', None),
             "Certification": dic.get('CERTIFICATION', None),
             "Worked_As": dic.get('WORKED AS', None),
-            "Years_Of_Experience": dic.get('YEARS OF EXPERIENCE', [None])[0],
+            "Years_Of_Experience": dic.get('YEARS OF EXPERIENCE', []),  
             "Phone_Number": contact_info["phone_number"],
             "Birthday": contact_info["birthday"]
         }
@@ -112,4 +136,7 @@ def parse_resume(file_path):
  
     except Exception as e:
         print(f"Exception Occurred: {str(e)}")
+        print(f"Exception type: {type(e).__name__}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return None
