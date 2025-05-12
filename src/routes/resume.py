@@ -48,11 +48,44 @@ async def parse_resume_endpoint(file: UploadFile):
             os.rmdir(temp_dir)
 
 def extract_contact_info(text):
-    phone_patterns = [
-        r'\b(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b',  
-        r'\b(?:\+\d{1,3}[-.\s]?)?\d{10,12}\b',  
-        r'\b(?:\+\d{1,3}[-.\s]?)?\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'  
-    ]
+    print("Searching for phone numbers in text...")
+    
+    coordonnees_pattern = r'Coordonnées[\s\S]{1,200}?(\+216\s*\d{8}|\+216\s*\d{2}\s*\d{3}\s*\d{3}|\d{8}|\d{2}\s*\d{3}\s*\d{3})'
+    mobile_pattern = r'(?:Mobile|Tel|Phone|Tél|GSM|Téléphone)(?::|.)?[\s:]*(\+216\s*\d{8}|\+216\s*\d{2}\s*\d{3}\s*\d{3}|\d{8}|\d{2}\s*\d{3}\s*\d{3})'
+    
+    phone_number = None
+    
+    coord_match = re.search(coordonnees_pattern, text, re.IGNORECASE)
+    if coord_match:
+        raw_number = coord_match.group(1)
+        clean_number = re.sub(r'[^\d+]', '', raw_number)
+        
+        if len(clean_number) == 8 and not clean_number.startswith('+'):
+            phone_number = f"+216{clean_number}"
+        else:
+            phone_number = clean_number
+            
+        print(f"Found phone number near Coordonnées: {phone_number}")
+    
+    if not phone_number:
+        mobile_match = re.search(mobile_pattern, text, re.IGNORECASE)
+        if mobile_match:
+            raw_number = mobile_match.group(1)
+            clean_number = re.sub(r'[^\d+]', '', raw_number)
+            
+            if len(clean_number) == 8 and not clean_number.startswith('+'):
+                phone_number = f"+216{clean_number}"
+            else:
+                phone_number = clean_number
+                
+            print(f"Found phone number near Mobile/Tel label: {phone_number}")
+    
+    if not phone_number:
+        mobile_label_match = re.search(r'(\d{8})\s*\(Mobile\)', text)
+        if mobile_label_match:
+            raw_number = mobile_label_match.group(1)
+            phone_number = f"+216{raw_number}"
+            print(f"Found phone number with (Mobile) label: {phone_number}")
     
     birthday_patterns = [
         r'\b(?:Birth(?:day|date)|DOB|Date\s+of\s+Birth)?\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b',
@@ -60,18 +93,12 @@ def extract_contact_info(text):
         r'\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?\s+\d{2,4}\b'
     ]
     
-    phone_number = None
-    for pattern in phone_patterns:
-        matches = re.findall(pattern, text)
-        if matches:
-            phone_number = matches[0]
-            break
-    
     birthday = None
     for pattern in birthday_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
             birthday = matches[0]
+            print(f"Found birthday: {birthday}")
             break
     
     return {
@@ -108,6 +135,9 @@ def parse_resume(file_path):
         for ent in doc.ents:
             dic.setdefault(ent.label_, []).append(ent.text)
 
+        print("the doc is   ")
+        print(text_of_resume)
+        
         contact_info = extract_contact_info(text_of_resume)
         print("Parsing Completed...") 
         
